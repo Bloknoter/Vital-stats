@@ -1,79 +1,87 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
 using Coroutines;
+
 
 namespace VitalStatsEngine
 {
     public class VitalStats
     {
-        public List<Indicator> indicators { get; private set; } = new List<Indicator>();
+        public List<Stat> stats { get; private set; } = new List<Stat>();
 
-        public Indicator AddStat(string Name)
+        public Stat AddStat(string Name)
         {
-            indicators.Add(new Indicator(Name, 100));
-            return indicators[indicators.Count - 1];
+            stats.Add(new Stat(Name, 100));
+            return stats[stats.Count - 1];
         }
 
-        public Indicator AddStat(string Name, int maxvalue)
+        public Stat AddStat(string Name, float maxvalue)
         {
-            indicators.Add(new Indicator(Name, maxvalue));
-            return indicators[indicators.Count - 1];
+            stats.Add(new Stat(Name, maxvalue));
+            return stats[stats.Count - 1];
         }
 
-        public Indicator AddStat(string Name, int startvalue, int maxvalue)
+        public Stat AddStat(string Name, float startvalue, float maxvalue)
         {
-            indicators.Add(new Indicator(Name, maxvalue));
-            indicators[indicators.Count - 1].Value = startvalue;
-            return indicators[indicators.Count - 1];
+            stats.Add(new Stat(Name, maxvalue));
+            stats[stats.Count - 1].Value = startvalue;
+            return stats[stats.Count - 1];
         }
 
-        public Indicator GetIndicator(string Name)
+        public Stat GetStat(string Name)
         {
-            foreach (var i in indicators)
+            foreach (var i in stats)
             {
                 if (i.Name == Name)
                     return i;
             }
-            return null;
+            throw new System.Exception($"Indicator '{Name}' does not exist");
         }
 
         public int Count
         {
             get
             {
-                return indicators.Count;
+                return stats.Count;
             }
         }
 
     }
 
-    public class Indicator
+    public class Stat
     {
-        public delegate void OnValueChangedDelegate(Indicator indicator, int newvalue);
+        public delegate void OnValueChangedDelegate(Stat stat, float newvalue);
 
         public event OnValueChangedDelegate OnValueChangedEvent;
 
-        public Indicator(string newName, int maxvalue)
+        public Stat(string newName, float maxvalue)
         {
             Name = newName;
             MAX_VALUE = maxvalue;
         }
 
         public string Name { get; private set; }
-        public int MAX_VALUE { get; private set; }
-        private int value;
-        public int Value
+        public float MAX_VALUE { get; private set; }
+        private float value;
+        public float Value
         {
             get { return value; }
-            set { this.value = Mathf.Clamp(value, 0, MAX_VALUE); OnValueChangedEvent?.Invoke(this, this.value); }
+            set 
+            {
+                float preValue = this.value;
+                this.value = Mathf.Clamp(value, 0, MAX_VALUE);
+                if (preValue != this.value)
+                    OnValueChangedEvent?.Invoke(this, this.value);
+            }
         }
 
         private List<StatRule> statRules = new List<StatRule>();
         public void AddStatRule(StatRule newrule)
         {
             statRules.Add(newrule);
-            newrule.Indicator = this;
+            newrule.Stat = this;
             newrule.Start();
         }
 
@@ -89,14 +97,14 @@ namespace VitalStatsEngine
 
     public abstract class StatRule : ICoroutineable
     {
-        protected Indicator indicator;
-        public Indicator Indicator
+        protected Stat stat;
+        public Stat Stat
         {
-            get { return indicator; } 
+            get { return stat; } 
             set
             {
                 if (value != null)
-                    indicator = value;
+                    stat = value;
             }
         }
         protected bool isWorking;
@@ -107,14 +115,14 @@ namespace VitalStatsEngine
 
     public class SimpleStatRule : StatRule
     {
-        private int timestep;
-        public int TimeStep
+        private float timestep;
+        public float TimeStep
         {
             get { return timestep; }
             set { if (value > 0) { timestep = value; } }
         }
-        public int ValueperStep;
-        public SimpleStatRule(int newtimestep, int newvalueperstep)
+        public float ValueperStep;
+        public SimpleStatRule(float newtimestep, float newvalueperstep)
         {
             timestep = newtimestep;
             ValueperStep = newvalueperstep;
@@ -122,13 +130,13 @@ namespace VitalStatsEngine
         public override void Start()
         {
             isWorking = true;
-            CoroutineMaster.Wait(this, timestep);
+            CoroutineMaster.WaitStatic(this, timestep);
         }
         public override void Continue()
         {
-            if (indicator != null && isWorking)
+            if (stat != null && isWorking)
             {
-                indicator.Value += ValueperStep;
+                stat.Value += ValueperStep;
                 Start();
             }
             else
