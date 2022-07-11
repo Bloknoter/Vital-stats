@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using Coroutines;
 
 namespace VitalStatsEngine
 {
@@ -36,11 +36,6 @@ namespace VitalStatsEngine
                     return i;
             }
             return null;
-        }
-
-        public VitalStats()
-        {
-            //Indicator health = AddStat("health", 100);
         }
 
         public int Count
